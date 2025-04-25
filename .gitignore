@@ -1,0 +1,10 @@
+src/bin
+src/lib64
+src/lib
+src/pyenv.cfg
+src/include
+src/__pycache__
+src/utils/__pycache__
+src/.vscode
+.vscode
+src/.lgd-nfy0

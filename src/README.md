@@ -1,6 +1,25 @@
 Control software
 ====
 
-This directory must contain code for control software which is used by the vehicle to participate in the competition and which was developed by the participants.
+You can run our control software by running the following commands in a linux terminal
 
-All artifacts required to resolve dependencies and build the project must be included in this directory as well.
+```bash
+cd WRO25_FE_UgraloViziBoci/src
+
+# Initialize python virtual environment
+python3 -m venv .
+
+# Active the virtual environment
+source bin/activate
+
+# Install pigpio
+sudo apt install pigpio python3-pigpio
+sudo systemctl enable --now pigpiod
+
+# Install dependecies
+python3 -m pip install -r requirements.txt
+
+# Run the code
+python3 main.py
+```
+
