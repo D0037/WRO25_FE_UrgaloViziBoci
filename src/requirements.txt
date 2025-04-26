@@ -3,4 +3,3 @@ numpy
 RPi.GPIO
 pyserial
 rpi-hardware-pwm
-mpu6050-raspberrypi

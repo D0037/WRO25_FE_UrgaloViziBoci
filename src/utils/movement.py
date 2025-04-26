@@ -25,7 +25,6 @@ def init():
     GPIO.setup(r_pwm_pin, GPIO.OUT)
     GPIO.setup(l_pwm_pin, GPIO.OUT)
 
-
     # Setup PWM
     # Hardware PWM for the servo
     servo_pwm = HardwarePWM(pwm_channel=0, hz=50, chip=servo_pwm_chip)
