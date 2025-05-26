@@ -38,6 +38,7 @@ python3 -m pip install -r requirements.txt
 
 ## Build C++ source files
 ```bash
+mkdir src/bin
 c++ -O3 -Wall -shared -std=c++20 -fPIC $(python3 -m pybind11 --includes) src/utils/gyro.cpp -o src/utils/bin/gyro$(python3-config --extension-suffix)
 ```
 
