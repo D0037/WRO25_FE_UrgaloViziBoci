@@ -1,4 +1,5 @@
 src/bin
+src/utils/bin
 src/lib64
 src/lib
 src/pyenv.cfg
