@@ -1,24 +1,39 @@
-from utils.position_tracking import PositionTracker
-from utils.bin.gyro import Gyro
 import utils.movement as move
-import RPi.GPIO as GPIO
 import time
+import threading
+import utils.image_processing as processing
+import os
+import signal
 
-#tracker = PositionTracker()
-gyro = Gyro("/dev/i2c-1", 0x68, 1, 0)
-
-# Initialize RPi GPIO
-GPIO.setmode(GPIO.BCM)
+image_thread = threading.Thread(target=processing.image_thread)
+image_thread.start()
 
 move.init()
 
-move.set_angle(30)
-while True:
-    try:
+def go_until_line():
+    start_angle = move.tracker.gyro.get_z()
+    move.set_speed(8)
+    move.set_angle(0)
+    
+    while not processing.lines:
+        error = move.tracker.gyro.get_z() - start_angle
+        correction = error * 10
+
+        move.set_angle(correction)
+        print("searching for line...")
         time.sleep(0.1)
-    except KeyboardInterrupt:
-        break
+    move.set_angle(0)
+    move.set_speed(0)
+
+
+try:
+    go_until_line()
+    time.sleep(99999999)
+except KeyboardInterrupt:
+    move.set_speed(0)
+    move.set_angle(0)
 
 # Cleanup
-GPIO.cleanup((5,6,23,24))
-gyro.kill()
+processing.kill = True
+move.cleanup()
+os.kill(os.getpid(), signal.SIGTERM)

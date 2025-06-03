@@ -139,6 +139,7 @@ class Gyro {
         void calibrate(int samples = 5000) {
             double total_x = 0.0, total_y = 0.0, total_z = 0.0;
 
+            py::gil_scoped_release release;
             for (int i = 0; i < samples; i++) {
                 total_x += get_x_vel();
                 total_y += get_y_vel();

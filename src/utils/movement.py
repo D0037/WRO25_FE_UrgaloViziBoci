@@ -19,7 +19,7 @@ servo_pwm: None | HardwarePWM = None
 l_pwm: None | GPIO.PWM = None
 r_pwm: None | GPIO.PWM = None
 
-tracker: None | PositionTracker = None
+tracker = None
 
 radian_conversion = math.pi / 180
 
@@ -59,6 +59,7 @@ def init():
     tracker = PositionTracker("/dev/i2c-1", 0x68, 1, 0, 496.5)
 
     # Setup GPIO
+    GPIO.setmode(GPIO.BCM)
     GPIO.setup(r_en, GPIO.OUT)
     GPIO.setup(l_en, GPIO.OUT)
     GPIO.setup(r_pwm_pin, GPIO.OUT)
@@ -99,9 +100,10 @@ def cleanup():
     servo_pwm.stop()
     l_pwm.stop()
     r_pwm.stop()
-    #tracker.kill()
+    tracker.kill()
+    GPIO.cleanup((5,6,23,24))
 
-def move(distance: float, max_speed: float = 10, p: float = 2, a: float = 30):
+def move(distance: float, max_speed: float = 10, p: float = 10, a: float = 30):
     relative_start = RelativeCoordinates(tracker.get_x(), tracker.get_y(), tracker.gyro.get_z() * radian_conversion)
     
     start_gyro = tracker.gyro.get_z()

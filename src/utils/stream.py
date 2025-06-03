@@ -2,6 +2,7 @@ from flask import Flask, Response
 import cv2
 import threading
 import time
+import os
 
 app = Flask(__name__)
 
@@ -24,7 +25,6 @@ def video_feed(frame):
 def init():
     flask_thread = threading.Thread(target=app.run, kwargs={"host": "0.0.0.0", "port": 5000, "threaded": True})
     flask_thread.start()
-    cap = cv2.VideoCapture(0)
 
 def show(name, frame):
     frames[name] = frame
