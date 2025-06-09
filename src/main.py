@@ -12,7 +12,7 @@ move.init()
 
 def go_until_line():
     start_angle = move.tracker.gyro.get_z()
-    move.set_speed(8)
+    #move.set_speed(8)
     move.set_angle(0)
     
     while not processing.lines:
@@ -28,6 +28,7 @@ def go_until_line():
 
 try:
     go_until_line()
+    print("Found line!")
     time.sleep(99999999)
 except KeyboardInterrupt:
     move.set_speed(0)
