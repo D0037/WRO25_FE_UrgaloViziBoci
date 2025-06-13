@@ -4,11 +4,26 @@ import utils.stream as stream
 import time
 import threading
 import copy
+import math
 
 # Flags
 lines = False
 kill = False
 new_frame = None
+                
+
+positions = {
+    "front_middle": lambda x, y: y > 300 and math.sqrt(3) * x + 300 - (math.sqrt(3) / 2) * 2200 < y < math.sqrt(3) * x + 300 - (math.sqrt(3) / 2) * 1760,
+    "front_inner":  lambda x, y: y > 300 and y > math.sqrt(3) * x + 300 - (math.sqrt(3) / 2) * 1760,
+    "front_outer":  lambda x, y: y > 300 and y < math.sqrt(3) * x + 300 - (math.sqrt(3) / 2) * 2200,
+    "back_outer":   lambda x, y: y < 300 and x > 850,
+    "back_middle":  lambda x, y: y < 300 and 700 < x < 850,
+    "back_inner":   lambda x, y: y < 300 and x < 700,
+}
+
+start_pos = None
+direction = True # True: orange is further, False: blue is further
+height, width = 0, 0
 
 def image_thread():
     print("Image thread started")
@@ -19,19 +34,8 @@ def image_thread():
     y_min_0 = 400
     time_prev = time.time()
     _, frame = cap.read()
-
-    count = 0
-    x_avg = 0
-    x_min = 2000
-    x_max = 0
-
-    y_avg = 0
-    y_min = 2000
-    y_max = 0
-
-    x_values = []
-    y_values = []
-
+    global height, width
+    height, width, _ = frame.shape
     while not kill:
         _, frame = cap.read()
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -48,8 +52,8 @@ def image_thread():
         lower_blue = np.array([90, 55, 35])
         upper_blue = np.array([170, 255, 255])
 
-        lower_orange = np.array([0, 40, 110])
-        upper_orange = np.array([8, 255, 255])
+        lower_orange = np.array([0, 50, 100])
+        upper_orange = np.array([10, 255, 255])
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         black_mask = gray < 50
@@ -70,7 +74,6 @@ def image_thread():
             filtered_cnt = sorted(blue_cnts, key=cv2.contourArea, reverse=True)
             filtered_cnt = filtered_cnt[:round(50 / (cv2.contourArea(filtered_cnt[0]) + 1)) + 2]
             cv2.drawContours(blue, filtered_cnt, -1, 255, -1)
-            print("blue area:", cv2.contourArea(filtered_cnt[0]), "length:", len(filtered_cnt))
         
             points = np.vstack(filtered_cnt).squeeze()
             if len(points) > 2:
@@ -122,34 +125,27 @@ def image_thread():
                 y_intersect = round(blue_slope * x_intersect + blue_line[1])
             
             if x_intersect is not None and y_intersect is not None:
-                if x_intersect < x_min_0 and y_intersect < y_min_0:
-                    pass
-
                 global lines
                 lines = True
-                print("line!", x_intersect, y_intersect)
 
-                x_min = min(x_min, x_intersect)
-                y_min = min(y_min, y_intersect)
-
-                x_max = max(x_max, x_intersect)
-                y_max = max(y_max, y_intersect)
-
-                if count != 0:
-                    x_avg = (x_avg * count + x_intersect) / (count + 1)
-                    y_avg = (y_avg * count + y_intersect) / (count + 1)
-                else:
-                    x_avg = x_intersect
-                    y_avg = y_intersect
-                count += 1
-
-                print(f"x max: {x_max}, min: {x_min}, avg: {x_avg}")
-                print(f"y max: {y_max}, min: {y_min}, avg: {y_avg}")
-
-                x_values.append(x_intersect) 
-                y_values.append(y_intersect) 
-                with open("values.txt", '+a') as f:
-                    f.write(f"{x_intersect},{y_intersect}\n")
+                for key in positions.keys():
+                    global start_pos, direction
+                    direction = abs(orange_slope) > abs(blue_slope)
+                    if direction:
+                        x = width + x_intersect
+                        if positions[key](x, y_intersect):
+                            start_pos = key
+                            break
+                    if not direction and positions[key](x_intersect, y_intersect):
+                        start_pos = key
+                        print(x_intersect, y_intersect)
+                        print(key)
+                        break
+                
+                """with open("values.csv", "+a") as f:
+                    print(x_intersect, y_intersect)
+                    f.write(f"{x_intersect}, {y_intersect}\n")
+                    f.close()"""
 
                 cv2.circle(frame, (x_intersect, y_intersect), 5, (0, 255, 0), -1)
 
@@ -157,6 +153,4 @@ def image_thread():
         stream.show("orange", orange)
         stream.show("blue", blue)
 
-
-        print(time.time() - time_prev)
-        time_prev = time.time()
+        #time_prev = time.time()

@@ -81,6 +81,9 @@ def init():
     GPIO.output(l_en, GPIO.HIGH)
 
 def set_angle(angle):
+    """Set angle of servo relative to forward pointing wheels
+        @angle: angle to set servo to
+    """
     # Map the angle to a duty cycle (0 to 100)
     duty = ((angle + 90) / 36) + 5
     servo_pwm.change_duty_cycle(max(min(duty, 20), 0))
@@ -104,6 +107,11 @@ def cleanup():
     GPIO.cleanup((5,6,23,24))
 
 def move(distance: float, max_speed: float = 10, p: float = 10, a: float = 30):
+    """Function to move in a straigth line
+        @distance: distance to go
+        @max_speed: max speed to reach
+        @p: correction constant
+    """
     relative_start = RelativeCoordinates(tracker.get_x(), tracker.get_y(), tracker.gyro.get_z() * radian_conversion)
     
     start_gyro = tracker.gyro.get_z()
@@ -134,7 +142,7 @@ def move(distance: float, max_speed: float = 10, p: float = 10, a: float = 30):
         speed = 10
 
         if current_dist != prev_dist:
-            print("move", speed, error, correction, current_dist, acc_dist)
+            #print("move", speed, error, correction, current_dist, acc_dist)
             prev_dist = current_dist
 
         set_angle(correction * (distance / abs(distance)))
@@ -143,9 +151,15 @@ def move(distance: float, max_speed: float = 10, p: float = 10, a: float = 30):
     set_speed(-5)
 
 def turn(angle: float, radius: float, max_speed = 10, p = 30):
+    """Move in a circle with a radius
+        @angle: angle difference after stop from starting point
+        @radius: radius of the circle
+        @max_speed: max speed to reach
+        @p: correction constant
+    """
     relative_start = RelativeCoordinates(tracker.get_x(), tracker.get_y(), tracker.gyro.get_z() * radian_conversion)
     relative_start.set_origin_from_relative(-radius, 0)
-    print(relative_start.get_point(tracker.get_x(), tracker.get_y()), tracker.get_x(), tracker.get_y(), tracker.gyro.get_z())
+    #print(relative_start.get_point(tracker.get_x(), tracker.get_y()), tracker.get_x(), tracker.get_y(), tracker.gyro.get_z())
     angle_start = tracker.gyro.get_z()
     angle_prev = -1
 
@@ -164,7 +178,7 @@ def turn(angle: float, radius: float, max_speed = 10, p = 30):
         correction = error * p
 
         if angle_prev != angle_current:
-            print("turn", angle_current, error, dist_from_center, x_pos, y_pos, p)
+            #print("turn", angle_current, error, dist_from_center, x_pos, y_pos, p)
             angle_prev = angle_current
 
         set_angle(correction * (-angle / abs(angle)))
