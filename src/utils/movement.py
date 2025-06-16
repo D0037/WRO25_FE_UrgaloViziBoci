@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 from rpi_hardware_pwm import HardwarePWM
 from utils.bin.tracker import PositionTracker
+from utils.pid import PID
 import time
 import math
 
@@ -150,7 +151,7 @@ def move(distance: float, max_speed: float = 10, p: float = 10, a: float = 30):
     
     set_speed(-5)
 
-def turn(angle: float, radius: float, max_speed = 10, p = 30):
+def turn(angle: float, radius: float, max_speed = 15, p = 30):
     """Move in a circle with a radius
         @angle: angle difference after stop from starting point
         @radius: radius of the circle
@@ -158,29 +159,45 @@ def turn(angle: float, radius: float, max_speed = 10, p = 30):
         @p: correction constant
     """
     relative_start = RelativeCoordinates(tracker.get_x(), tracker.get_y(), tracker.gyro.get_z() * radian_conversion)
-    relative_start.set_origin_from_relative(-radius, 0)
-    #print(relative_start.get_point(tracker.get_x(), tracker.get_y()), tracker.get_x(), tracker.get_y(), tracker.gyro.get_z())
+    relative_start.set_origin_from_relative(radius, 0)
     angle_start = tracker.gyro.get_z()
     angle_prev = -1
 
-    p /= radius / 20
+    #p /= radius / 20
 
     set_speed(max_speed)
+    start_time = time.time()
+    #pid = PID(radius, 2, 0, 16)
+    with open("turn.csv", "w") as f:
+        f.write("angle,correction,dist_from_center,x_pos,y_pos,time,corr_mod\n")
+    correction = 0
+    prev_pos = relative_start.get_point(tracker.get_x(), tracker.get_y())
+    d_prev = 0
 
     while abs(tracker.gyro.get_z() - angle_start) < abs(angle):
         x_pos, y_pos = relative_start.get_point(tracker.get_x(), tracker.get_y())
         angle_current = tracker.gyro.get_z() - angle_start
 
         dist_from_center = math.sqrt(x_pos * x_pos + y_pos * y_pos)
-        error = dist_from_center - radius
-        if error < 0:
-            error /= 5
-        correction = error * p
+        set_speed(max_speed)# + (abs(correction)) / 15)
 
-        if angle_prev != angle_current:
-            #print("turn", angle_current, error, dist_from_center, x_pos, y_pos, p)
-            angle_prev = angle_current
+        if (prev_pos != x_pos, y_pos):
+            #correction, p, i, d = pid.update(dist_from_center)
+            if (radius != dist_from_center):
+                correction = math.log(abs(radius - dist_from_center + 1), 2) * 15 * (radius - dist_from_center) / abs(radius - dist_from_center)
+            """if d == 0:
+                d = d_prev
+            d_prev = d"""
+            
+            corr_mod = correction
+            if correction > 0:
+                corr_mod *= 7
+            log = f"{angle_current}, {correction}, {dist_from_center}, {x_pos}, {y_pos}, {time.time() - start_time}, {corr_mod}"
+            print(log)
+            with open("turn.csv", "+a") as f:
+                f.write(log + "\n")
 
-        set_angle(correction * (-angle / abs(angle)))
+
+        set_angle((correction - 10)* (angle / abs(angle)))
     
     set_speed(0)
