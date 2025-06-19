@@ -271,6 +271,9 @@ public:
     double get_y() {
         return y;
     }
+    double get_speed() {
+        return speed;
+    }
 
     void reset() {
         x = 0;
@@ -291,8 +294,11 @@ public:
 private:
     void process() {
         unsigned char data[3];
+        auto prev_time = std::chrono::high_resolution_clock::now();
+        double dy_long = 0;
         while (!kill_switch) {
             ssize_t bytes = read(fd, data, sizeof(data));
+            std::chrono::duration<double, std::milli> dt;
             if (bytes < 0) {
                 perror("Failed to read from /dev/mice");
                 break;
@@ -308,7 +314,7 @@ private:
             }
         }
     }
-    double conversion_factor, angle_rad, angle;
+    double conversion_factor, angle_rad, angle, speed;
     double x = 0, y = 0;
     bool kill_switch = false;
     int fd;
@@ -343,8 +349,9 @@ PYBIND11_MODULE(tracker, m) {
         .def("get_angle", &PositionTracker::get_angle)
         .def("get_angle_rad", &PositionTracker::get_angle_rad)
         .def("get_gyro_z", &PositionTracker::get_gyro_z)
+        .def("get_speed", &PositionTracker::get_speed)
         .def_readwrite("gyro", &PositionTracker::gyro);
-}
+};
 
 /*int main() {
     PositionTracker tracker("/dev/i2c-1", 0x69 - 1, 1, 0, 496.5);
@@ -352,7 +359,6 @@ PYBIND11_MODULE(tracker, m) {
 
     while (true) {
         //std::cout << gyro.get_z() << "\n";
-        std::cout << tracker.get_x() << ", " << tracker.get_y() << " " << tracker.gyro.get_x() << "\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::cout << tracker.get_speed() << "\n";
     }
 }*/

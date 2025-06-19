@@ -10,20 +10,37 @@ import math
 lines = False
 kill = False
 new_frame = None
-                
+
+def tan(x: float) -> float:
+    return math.tan(math.pi * x / 180)
 
 positions = {
+    "front_inner":  lambda x, y: y > tan(10) * x + 375 and y > tan(10) * -x + 330,
+
+    "front_middle": lambda x, y: y > tan(10) * x + 375 and tan(10) * -x + 250 < y < tan(10) * -x + 330,
+
+    "front_outer":  lambda x, y: y > tan(10) * x + 375 and y < tan(10) * -x + 250,
+
+    "back_inner":   lambda x, y: y < tan(10) * x + 375 and y > tan(8) * -x + 292.69,
+
+    "back_middle":  lambda x, y: y < tan(10) * x + 375 and tan(6) * -x + 270 < y < tan(8) * -x + 292.69,
+
+    "back_outer":   lambda x, y: y < tan(10) * x + 375 and y < tan(6) * -x + 270,
+}
+
+"""positions = <
     "front_middle": lambda x, y: y > 300 and math.sqrt(3) * x + 300 - (math.sqrt(3) / 2) * 2200 < y < math.sqrt(3) * x + 300 - (math.sqrt(3) / 2) * 1760,
     "front_inner":  lambda x, y: y > 300 and y > math.sqrt(3) * x + 300 - (math.sqrt(3) / 2) * 1760,
     "front_outer":  lambda x, y: y > 300 and y < math.sqrt(3) * x + 300 - (math.sqrt(3) / 2) * 2200,
     "back_outer":   lambda x, y: y < 300 and x > 850,
     "back_middle":  lambda x, y: y < 300 and 700 < x < 850,
     "back_inner":   lambda x, y: y < 300 and x < 700,
-}
+}"""
 
 start_pos = None
 direction = True # True: orange is further, False: blue is further
 height, width = 0, 0
+obstacle = True
 
 def image_thread():
     print("Image thread started")
@@ -36,6 +53,8 @@ def image_thread():
     _, frame = cap.read()
     global height, width
     height, width, _ = frame.shape
+    with open("values.csv", "w") as f:
+        f.write("x,y\n")
     while not kill:
         _, frame = cap.read()
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -43,25 +62,30 @@ def image_thread():
         orange_line = [None, None, None, None]
         blue_line = [None, None, None, None]
 
-        lower_red = np.array([164, 100, 100])
-        upper_red = np.array([179, 255, 255])
+        lower_green = np.array([50, 50, 50])
+        upper_green = np.array([80, 255, 255])
 
-        lower_green = np.array([104, 100, 100])
-        upper_green = np.array([124, 255, 255])
-
-        lower_blue = np.array([90, 55, 35])
+        lower_blue = np.array([90, 35, 20])
         upper_blue = np.array([170, 255, 255])
 
         lower_orange = np.array([0, 50, 100])
         upper_orange = np.array([10, 255, 255])
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        black_mask = gray < 50
+        green_mask = cv2.inRange(hsv, lower_green, upper_green)
 
+        frame = cv2.GaussianBlur(frame, (5, 5), 1.4)
+        
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        black_mask = gray < 65
+        
         bottom_black_row = black_mask.shape[0] - np.argmax(np.flipud(black_mask), axis=0) - 1
         for x in range(frame.shape[1]):
             frame[:bottom_black_row[x] + 10, x] = 0
             hsv[:bottom_black_row[x] + 10, x] = 0
+
+        edges = cv2.Canny(frame, threshold1=100, threshold2=200)
+        stream.show("edges", edges)
+
         
         blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
         orange_mask = cv2.inRange(hsv, lower_orange, upper_orange)
@@ -72,7 +96,7 @@ def image_thread():
         blue_cnts, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         if len(blue_cnts) > 0:
             filtered_cnt = sorted(blue_cnts, key=cv2.contourArea, reverse=True)
-            filtered_cnt = filtered_cnt[:round(50 / (cv2.contourArea(filtered_cnt[0]) + 1)) + 2]
+            filtered_cnt = filtered_cnt[:round(90 / (cv2.contourArea(filtered_cnt[0]) + 1)) + 2]
             cv2.drawContours(blue, filtered_cnt, -1, 255, -1)
         
             points = np.vstack(filtered_cnt).squeeze()
@@ -89,11 +113,35 @@ def image_thread():
 
                 cv2.line(frame, start, end, (255, 0, 0), 2)
 
+        if obstacle:
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            opened = cv2.morphologyEx(orange_mask, cv2.MORPH_OPEN, kernel, iterations=5)
+
+            stream.show("open", opened)
+
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+            dilated = cv2.dilate(opened, kernel, iterations=1)
+
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+            mask = cv2.bitwise_not(dilated)
+            orange_mask = cv2.bitwise_and(orange_mask, mask)
+            cv2.morphologyEx(orange_mask, cv2.MORPH_CLOSE, kernel)
+            #cnts, _ = cv2.findContours(orange_mask)
+            #orange_mask = cv2.erode(orange_mask, kernel, iterations=1)
+        
         orange_cnts, _ = cv2.findContours(orange_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        red_block = np.zeros(orange_mask.shape, dtype=np.uint8)
         if len(orange_cnts) > 0:
             filtered_cnt = sorted(orange_cnts, key=cv2.contourArea, reverse=True)
-            filtered_cnt = filtered_cnt[:round(100 / (cv2.contourArea(filtered_cnt[0]) + 1)) + 2]
+            filtered_cnt = filtered_cnt[:round(90 / (cv2.contourArea(filtered_cnt[0]) + 1)) + 1]
             cv2.drawContours(orange, filtered_cnt, -1, 255, -1)
+
+            """for cnt in filtered_cnt:
+                approx = cv2.approxPolyDP(cnt, epsilon=5, closed=True)
+                filtered_cnt = [approx]
+                cv2.drawContours(smooth, [approx], -1, 255, -1)
+
+                stream.show("smooth", smooth)"""
 
             points = np.vstack(orange_cnts).squeeze()
             if len(points) > 2:
@@ -131,26 +179,29 @@ def image_thread():
                 for key in positions.keys():
                     global start_pos, direction
                     direction = abs(orange_slope) > abs(blue_slope)
-                    if direction:
-                        x = width + x_intersect
+                    if not direction:
+                        x = width - x_intersect
                         if positions[key](x, y_intersect):
                             start_pos = key
+                            print(x, y_intersect)
+                            print(key, "blue")
                             break
-                    if not direction and positions[key](x_intersect, y_intersect):
+                    if direction and positions[key](x_intersect, y_intersect):
                         start_pos = key
                         print(x_intersect, y_intersect)
-                        print(key)
+                        print(key, "orange")
                         break
                 
-                """with open("values.csv", "+a") as f:
-                    print(x_intersect, y_intersect)
+                with open("values.csv", "+a") as f:
+                    #print(x_intersect, y_intersect)
                     f.write(f"{x_intersect}, {y_intersect}\n")
-                    f.close()"""
+                    f.close()
 
                 cv2.circle(frame, (x_intersect, y_intersect), 5, (0, 255, 0), -1)
 
         stream.show("frame", frame)
         stream.show("orange", orange)
+        #stream.show("red", red_block)
         stream.show("blue", blue)
 
         #time_prev = time.time()

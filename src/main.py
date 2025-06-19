@@ -27,7 +27,7 @@ move.init()
 
 
 try:
-    x, y, z = 0, 0, 0
+    """x, y, z = 0, 0, 0
 
     while (not processing.lines):
         time.sleep(0.001)
@@ -55,7 +55,8 @@ try:
 
         move.move(40, 10)
     
-    first(x, y, z)
+    first(x, y, z)"""
+    move.turn(90, 100)
 
 except KeyboardInterrupt:
     move.set_speed(0)
