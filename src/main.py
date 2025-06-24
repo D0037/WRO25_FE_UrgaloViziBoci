@@ -10,57 +10,58 @@ image_thread.start()
 
 move.init()
 
-"""def go_until_line():
-    start_angle = move.tracker.gyro.get_z()
-    #move.set_speed(8)
-    move.set_angle(0)
-    
-    while not processing.lines:
-        error = move.tracker.gyro.get_z() - start_angle
-        correction = error * 10
-
-        move.set_angle(correction)
-        print("searching for line...")
-        time.sleep(0.1)
-    move.set_angle(0)
-    move.set_speed(0)"""
-
-
 try:
-    """x, y, z = 0, 0, 0
+    #processing.set_mode("blocks")
+    #while True:
+    #    print(processing.get_blocks())
+    #    time.sleep(0.5)
+    
+    x, y, z = 0, 0, 0
 
     while (not processing.lines):
         time.sleep(0.001)
     pos = processing.start_pos
+    processing.kill = True
 
     if pos == "front_outer": x, y = 40, 70   #1
     if pos == "front_middle": x, y = 60, 50  #2
-    if pos == "front_inner": x, y = 80, 30   #3
+    if pos == "front_inner": x, y = 50, 60   #3
     if pos == "back_outer": x, y = 61.5, 70  #4
     if pos == "back_middle": x, y = 81.5, 50 #5
-    if pos == "back_inner": x, y = 101.5, 30 #6
+    if pos == "back_inner": x, y = 71.5, 60 #6
     print("START_POS", pos)
 
-    #if orient == "blue_upper": z = 90            
-    #if orient == "orange_upper": z = -90
-    z = -90
+    z = 0
+    if processing.direction: z = 90            
+    else: z = -90
 
     def first(x:float, y:float, z:float):
-        move.move(x, 10)
+        move.move(x + 20, 12)
+        time.sleep(0.5)
         move.turn(z, y)
+        #time.sleep(5)
 
         for i in range(11):
-            move.move(100, 10)
+            if i == 0 and pos.endswith("inner"):
+                move.move(110, 12)
+                #time.sleep(5)
+            else:
+                move.move(140, 12)
+                #time.sleep(5)
+            time.sleep(0.5)
             move.turn(z, 60)
+            #time.sleep(5)
 
-        move.move(40, 10)
+        move.move(70, 12)
     
-    first(x, y, z)"""
-    move.turn(90, 100)
+    first(x, y, z)
+    #move.move(70)
+    #move.turn(-90, 50, forward=-1)
 
 except KeyboardInterrupt:
     move.set_speed(0)
     move.set_angle(0)
+    pass
 
 # Cleanup
 processing.kill = True
