@@ -159,10 +159,7 @@ def turn(angle: float, radius: float, max_speed = 12, p=None, i=None, d=None, fo
         @max_speed: max speed to reach
         @p: correction constant
     """
-    #print(f"turn {angle}, {radius}, {forward}")
     relative_start = RelativeCoordinates(tracker.get_x(), tracker.get_y(), tracker.gyro.get_z() * radian_conversion)
-    #relative_start.set_origin_from_relative(radius * (angle / abs(angle)), 0)
-    #print(relative_start.get_point(tracker.get_x(), tracker.get_y()))
     angle_start = tracker.gyro.get_z()
     angle_prev = -1
 
@@ -213,12 +210,12 @@ def turn(angle: float, radius: float, max_speed = 12, p=None, i=None, d=None, fo
                 if True:
                     if abs(angle_current) < 45:
                         y = y_pos
-                        derived = derivative_y(y)
-                        rotation = to_deg(math.atan(derived)) * angle_sign
+                        derived = derivative_y(y) * -angle_sign
+                        rotation = to_deg(math.atan(derived))
                     else:
                         x = x_pos
                         derived = derivative_x(abs(x))
-                        rotation = (90 - to_deg(derived)) * angle_sign
+                        rotation = (90 - to_deg(derived)) * -angle_sign
 
             # backwards
             elif forward == -1:

@@ -8,7 +8,7 @@ class PID:
     
     def update(self, error):
         self.sum += error
-        d = (error - self.prev) * self.d
+        d = (self.prev - error) * self.d
         self.prev = error
         correction = (error * self.p) + (self.sum * self.i) + d
         self.prev = error
