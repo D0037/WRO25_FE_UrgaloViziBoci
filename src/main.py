@@ -32,8 +32,8 @@ try:
     print("START_POS", pos)
 
     z = 0
-    if processing.direction: z = 90            
-    else: z = -90
+    if processing.direction: z = -90            
+    else: z = 90
 
     def first(x:float, y:float, z:float):
         move.move(x + 20, 12)

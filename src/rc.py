@@ -7,10 +7,11 @@ move.init()
 
 while True:
     try:
-        response = requests.get("http://192.168.0.191:8000/")
+        response = requests.get("http://10.42.0.1:8000/")
         data = response.json()
-        move.set_angle(float(data["s"]))
-        motor = float(data["m"])
+        move.set_angle(float(data["s"]) * 1.5)
+        print(data["s"])
+        motor = float(data["m"]*1.1)
         move.set_speed(motor)
     except KeyboardInterrupt:
         break

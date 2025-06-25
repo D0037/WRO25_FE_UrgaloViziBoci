@@ -215,21 +215,18 @@ def turn(angle: float, radius: float, max_speed = 12, p=None, i=None, d=None, fo
                     else:
                         x = x_pos
                         derived = derivative_x(abs(x))
-                        rotation = (90 - to_deg(derived)) * -angle_sign
+                        rotation = (90 - to_deg(math.atan(derived))) * -angle_sign
 
             # backwards
             elif forward == -1:
                 if abs(angle_current) > 45:
                     x = x_pos
                     derived = abs(x) * (radius - abs(x)) / ((abs(x)**(3/2) * math.sqrt(2 * radius - abs(x))) + 1e-10)
-                    rotation = (90 - (math.atan(derived) * 180 / math.pi))
-                    if x < 0:
-                        rotation -= 180
-                    rotation *= -1
+                    rotation = (90 - (math.atan(derived) * 180 / math.pi)) * -angle_sign
                 else:
                     y = y_pos
                     derived = y / (math.sqrt(max(radius**2 - y**2, 0)) + 1e-10)
-                    rotation = (math.atan(derived) * 180 / math.pi * (angle / abs(angle)))
+                    rotation = math.atan(derived) * 180 / math.pi * -angle_sign
 
             print(x_pos, y_pos)
 
