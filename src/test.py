@@ -17,7 +17,7 @@ try:
             if len(s.split()) == 4:
                 f = int(s.split()[3])
             try:
-                move.turn(float(s.split()[1]), float(s.split()[2]), 10, forward=f)
+                move.turn(float(s.split()[1]), float(s.split()[2]), 11, forward=f)
             except Exception as e:
                 print(f"WTF: {e}")
                 traceback.print_exc()
@@ -30,15 +30,20 @@ try:
             else:
                 move.move(float(s.split()[1]))
         elif op == "pid":
+            forward = 1
             [_, angle, radius, p, i, d] = s.split()
+            if len(s.split()) == 7:
+                forward = s.split()[6]
             with open("pid.txt", "+a") as f:
-                f.write(f"r: {radius}, p: {p}, i: {i}, d:{d}\n")
+                f.write(f"r: {radius}, f: {forward}, p: {p}, i: {i}, d: {d}\n")
             try:
-                move.turn(float(angle), float(radius), p=float(p), i=float(i), d=float(d))
+                move.turn(float(angle), float(radius), p=float(p), i=float(i), d=float(d), forward=forward)
             except KeyboardInterrupt:
                 move.set_angle(0)
                 move.set_speed(0)
-            # 
+            #
+        move.set_angle(0)
+        move.set_speed(0)
 except KeyboardInterrupt:
     pass
 

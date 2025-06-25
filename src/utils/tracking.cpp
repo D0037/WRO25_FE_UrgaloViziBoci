@@ -106,7 +106,7 @@ class Gyro {
         }
 
         double get_z() {
-            return z;
+            return z * -1;
         }
 
         void reset() {
@@ -306,8 +306,8 @@ private:
                 double dx = static_cast<int8_t>(data[1]) / conversion_factor;
                 double dy = static_cast<int8_t>(data[2]) / conversion_factor;
 
-                angle = gyro.get_z();
-                angle_rad = (angle / 180) * M_PI;
+                angle = gyro.get_z() * -1;
+                angle_rad = (angle / 180.0) * M_PI;
 
                 x += dx * cos(angle_rad) - dy * sin(angle_rad);
                 y += dx * sin(angle_rad) + dy * cos(angle_rad);

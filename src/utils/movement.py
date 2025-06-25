@@ -26,6 +26,8 @@ tracker = None
 
 radian_conversion = math.pi / 180
 
+global_angle: float = 0
+
 def get_pid(radius: float) -> tuple[float, float, float]:
     p = 30 - (11 / 50) * radius
     i = -0.003 * radius + 0.65
@@ -96,19 +98,21 @@ def init():
 
 def set_angle(angle):
     """Set angle of servo relative to forward pointing wheels
-        @angle: angle to set servo to
+        @angle: angle to set servo to (positive to right)
     """
     # Map the angle to a duty cycle (0 to 100)
     duty = ((angle + 90) / 36) + 5
     servo_pwm.change_duty_cycle(max(min(duty, 20), 0))
 
 def set_speed(speed: float):
+    bat = 0 #adc.read_bat()
+    multiplier = 1 #(1 + math.sqrt(8.4 - bat)) / math.sqrt(8.4 - bat)
     if speed > 0:
         l_pwm.ChangeDutyCycle(0)
-        r_pwm.ChangeDutyCycle(speed)
+        r_pwm.ChangeDutyCycle(speed * multiplier)
     elif speed < 0: 
         r_pwm.ChangeDutyCycle(0)
-        l_pwm.ChangeDutyCycle(-speed)
+        l_pwm.ChangeDutyCycle(-speed * multiplier)
     else:
         r_pwm.ChangeDutyCycle(0)
         l_pwm.ChangeDutyCycle(0)
@@ -121,7 +125,7 @@ def cleanup():
     GPIO.cleanup((5,6,23,24))
 
 def move(distance: float, max_speed: float = 10, p: float = 10, a: float = 30):
-    """Function to move in a straight line
+    """Function to move in a straight line 
         @distance: distance to go
         @max_speed: max speed to reach
         @p: correction constant
@@ -129,13 +133,17 @@ def move(distance: float, max_speed: float = 10, p: float = 10, a: float = 30):
     print(f"move {distance}")
     relative_start = RelativeCoordinates(tracker.get_x(), tracker.get_y(), tracker.gyro.get_z() * radian_conversion)
     
-    start_gyro = tracker.gyro.get_z()
+    global global_angle
+    start_gyro = global_angle
     prev_dist = -1
+    prev_angle = tracker.gyro.get_z()
 
     set_angle(0) # move servo to center
 
     while abs(relative_start.get_point_y(tracker.get_x(), tracker.get_y())) < abs(distance):
-        error = start_gyro - tracker.gyro.get_z()
+        error = tracker.gyro.get_z() - start_gyro
+        if prev_angle != tracker.gyro.get_z():
+            prev_angle = tracker.gyro.get_z()
         correction = error * -p
 
         # Calculate speed
@@ -150,41 +158,46 @@ def move(distance: float, max_speed: float = 10, p: float = 10, a: float = 30):
         set_angle(correction * (distance / abs(distance)))
         set_speed(speed * (distance / abs(distance)))
     
-    set_speed(-5)
+    set_speed(0)
 
-def turn(angle: float, radius: float, max_speed = 12, p=None, i=None, d=None, forward=1):
+def turn(angle: float, radius: float, max_speed = 10, p=None, i=None, d=None, forward=1):
     """Move in a circle with a radius
-        @angle: angle difference after stop from starting point
+        @angle: angle difference after stop from starting point (positive to right)
         @radius: radius of the circle
         @max_speed: max speed to reach
         @p: correction constant
     """
+    global global_angle
+
     relative_start = RelativeCoordinates(tracker.get_x(), tracker.get_y(), tracker.gyro.get_z() * radian_conversion)
-    angle_start = tracker.gyro.get_z()
-    angle_prev = -1
+    angle_start = global_angle
+
+    global_angle += angle
 
     #p /= radius / 20
+    pid_conf = {
+        (60, 1, 1): (17, 0.2, 30),
+        (60, -1, 1): (17, 0.2, 30),
+    }
 
+    angle_sign = angle / abs(angle)
     set_speed(max_speed)
     start_time = time.time()
     #pid = PID(8, 0.35, 8) # 100
     #pid = PID(19, 0.5, 8) # 50
-    if p == i == d == None:
-        p, i, d = get_pid(radius)
-        if radius == 60:
-            p, i, d = 12, 0.40, 16
-    pid = PID(p, i, d) # 40
-    print(p, i, d, radius)
+    #if p == i == d == None:
+    #    if list(pid_conf.keys()).count((radius, angle_sign, forward)) == 1:
+    #        p, i , d = pid_conf[radius]
+    pid = PID(17, 0.3, 8) # 40
+    print("turn", angle, radius, forward)
 
     with open("turn.csv", "w") as f:
-        f.write("angle,correction,derived,rotát-ion,x_pos,y_pos,p,i,d,bat,time\n")
+        f.write("angle,ratio,correction,rotation_calculated,x_rotation_calculated,y_rotation_calculated,distance_error,rotation_error,x_pos,y_pos,p,i,d,bat,time\n")
 
     correction = 0
     prev_pos = relative_start.get_point(tracker.get_x(), tracker.get_y())
     d_prev = 0
     p, i, d = 0,0,0
-
-    angle_sign = angle / abs(angle)
 
     while abs(tracker.gyro.get_z() - angle_start) < abs(angle):
         x_pos, y_pos = relative_start.get_point(tracker.get_x(), tracker.get_y())
@@ -192,6 +205,7 @@ def turn(angle: float, radius: float, max_speed = 12, p=None, i=None, d=None, fo
 
         if prev_pos != (x_pos, y_pos):
             prev_pos = x_pos, y_pos
+            distance_from_center = math.sqrt((radius - abs(x_pos))**2 + abs(y_pos)**2)
 
             def derivative_x(x):
                 derived = x * (radius - abs(x)) / ((abs(x)**(3/2) * math.sqrt(2 * radius - abs(x))) + 1e-10)
@@ -201,44 +215,35 @@ def turn(angle: float, radius: float, max_speed = 12, p=None, i=None, d=None, fo
                 derived = y / (math.sqrt(max(radius**2 - y**2, 0)) + 1e-10)
                 return derived
 
-            rotation = 0
-            derived = 0
+            x_rotation_calculated = 0
+            y_rotation_calculated = 0
+            x_derived = 0
+            y_derived = 0
 
-            # forward
-            if forward == 1:
-                # positive angle: left, negative x
-                if True:
-                    if abs(angle_current) < 45:
-                        y = y_pos
-                        derived = derivative_y(y) * -angle_sign
-                        rotation = to_deg(math.atan(derived))
-                    else:
-                        x = x_pos
-                        derived = derivative_x(abs(x))
-                        rotation = (90 - to_deg(math.atan(derived))) * -angle_sign
-
-            # backwards
-            elif forward == -1:
-                if abs(angle_current) > 45:
-                    x = x_pos
-                    derived = abs(x) * (radius - abs(x)) / ((abs(x)**(3/2) * math.sqrt(2 * radius - abs(x))) + 1e-10)
-                    rotation = (90 - (math.atan(derived) * 180 / math.pi)) * -angle_sign
-                else:
-                    y = y_pos
-                    derived = y / (math.sqrt(max(radius**2 - y**2, 0)) + 1e-10)
-                    rotation = math.atan(derived) * 180 / math.pi * -angle_sign
-
-            print(x_pos, y_pos)
+            # positive angle: left, negative x
+            if True:
+                y = y_pos
+                y_derived = derivative_y(y) * angle_sign * forward
+                y_rotation_calculated = to_deg(math.atan(y_derived))
+                x = x_pos
+                x_derived = derivative_x(abs(x))
+                x_rotation_calculated = (90 - to_deg(math.atan(x_derived))) * angle_sign
+            
+            ratio = (abs(angle_current) + 1e-10) / 90
+            rotation_calculated = x_rotation_calculated * ratio + y_rotation_calculated * (1 - ratio)
 
             set_speed(max_speed * forward)
 
             if (prev_pos != x_pos, y_pos):
                 prev_pos = x_pos, y_pos
-                correction, p, i, d_new = pid.update(angle_current - rotation)
+                rotation_error = (rotation_calculated - angle_current) * forward # brutálisan megszorozva xdd
+                distance_error = (distance_from_center - radius) * angle_sign * forward
+                error = rotation_error * 0.3 + distance_error
+                correction, p, i, d_new = pid.update(error)
                 if d_new != 0:
                     d = d_new
                 
-                log = f"{angle_current}, {correction}, {derived}, {rotation}, {x_pos}, {y_pos}, {p}, {i}, {d}, {adc.read_bat()}, {time.time() - start_time}"
+                log = f"{angle_current},{ratio},{correction},{rotation_calculated},{x_rotation_calculated},{y_rotation_calculated},{distance_error},{rotation_error},{x_pos},{y_pos},{p},{i},{d},{adc.read_bat()},{time.time() - start_time}"
                 with open("turn.csv", "+a") as f:
                     f.write(log + "\n")
 

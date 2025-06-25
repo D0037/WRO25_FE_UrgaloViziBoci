@@ -39,7 +39,7 @@ def cnt_middle(cnt):
     return cx, cy
     
 
-positions = {
+"""positions = {
     "front_inner":  lambda x, y: y > tan(10) * x + 375 and y > tan(10) * -x + 330,
 
     "front_middle": lambda x, y: y > tan(10) * x + 375 and tan(10) * -x + 250 < y < tan(10) * -x + 330,
@@ -51,13 +51,36 @@ positions = {
     "back_middle":  lambda x, y: y < tan(10) * x + 375 and tan(6) * -x + 270 < y < tan(8) * -x + 292.69,
 
     "back_outer":   lambda x, y: y < tan(10) * x + 375 and y < tan(6) * -x + 270,
+}"""
+
+positions = {
+    "front_inner":  lambda x, y: y > tan(10) * x + 375 and y > tan(10) * -x + 360,
+
+    "front_middle": lambda x, y: y > tan(10) * x + 375 and tan(10) * -x + 310 < y < tan(10) * -x + 360,
+
+    "front_outer":  lambda x, y: y > tan(10) * x + 375 and y < tan(10) * -x + 310,
+
+    "back_inner":   lambda x, y: y < tan(10) * x + 375 and y > tan(8) * -x + 285.69,
+
+    "back_middle":  lambda x, y: y < tan(10) * x + 375 and tan(6) * -x + 270 < y < tan(8) * -x + 285.69,
+
+    "back_outer":   lambda x, y: y < tan(10) * x + 375 and y < tan(6) * -x + 270,
 }
 
-block_pos = [
+"""block_pos = [
     lambda y: 220 < y, # front
     lambda y: 202 <= y < 220, # middle
     lambda y: y < 202, # back
+]"""
+block_pos = [
+    lambda y: 175 < y, # front
+    lambda y: 150 <= y < 175, # middle
+    lambda y: y < 150, # back
 ]
+
+measured_block_pos = {
+    "['n', 'n', 'n']": 0
+}
 
 """positions = <
     "front_middle": lambda x, y: y > 300 and math.sqrt(3) * x + 300 - (math.sqrt(3) / 2) * 2200 < y < math.sqrt(3) * x + 300 - (math.sqrt(3) / 2) * 1760,
@@ -97,7 +120,7 @@ def image_thread():
         lower_green = np.array([50, 100, 50])
         upper_green = np.array([80, 255, 255])
 
-        lower_blue = np.array([90, 35, 20])
+        lower_blue = np.array([90, 20, 20])
         upper_blue = np.array([170, 255, 255])
 
         lower_orange = np.array([0, 50, 100])
@@ -106,7 +129,7 @@ def image_thread():
         
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         lower_black = np.array([0])
-        upper_black = np.array([65])
+        upper_black = np.array([50])
         black_mask = cv2.inRange(gray, lower_black, upper_black)
 
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 2))
@@ -219,7 +242,7 @@ def image_thread():
             stream.show("orange", orange)
 
         if mode == "blocks":
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 4))
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 10))
             opened = cv2.erode(orange_mask, kernel, iterations=2)
 
             cnts, _ = cv2.findContours(opened, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -228,13 +251,14 @@ def image_thread():
             red_blocks = []
 
             new_blocks = ["n", "n", "n"]
+            global blocks
             for cnt in cnts:
                 red_blocks.append(cnt_middle(cnt))
                 cv2.circle(frame, red_blocks[-1], 5, (0, 0, 255), -1)
                 x, y = red_blocks[-1]
                 
                 for i in range(3):
-                    if block_pos[i](y):
+                    if block_pos[i](y) and y != 0:
                         new_blocks[i] = "r"
                 
 
@@ -247,13 +271,64 @@ def image_thread():
                 x, y = green_blocks[-1]
 
                 for i in range(3):
-                    if block_pos[i](y):
+                    if block_pos[i](y) and y != 0:
                         new_blocks[i] = "g"
-                
+            
+
+            if new_blocks.count("n") == 1:
+                if blocks[0] == "n":
+                    new_blocks[0] = new_blocks[1]
+                    new_blocks[1] = "n"
+                elif new_blocks[2] == "n":
+                    new_blocks[2] = new_blocks[1]
+                    new_blocks[1] = "n"
+            
+            blocks = new_blocks
+            """if list(measured_block_pos.keys()).count(str(new_blocks)) > 0:
+                measured_block_pos[str(new_blocks)] += 1
+            else:
+                measured_block_pos[str(new_blocks)] = 1
 
             global blocks
-            blocks = new_blocks                
+            for key in measured_block_pos.keys():
+                if measured_block_pos[key] > measured_block_pos[str(blocks)]:
+                    blocks = eval(key)"""
+
             stream.show("open", opened)
+        
+        if mode == "parking":
+            blue_line = [0, 0, 0, 0]
+            blue_cnts: list | None = None
+            blue_cnts, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            if len(blue_cnts) > 0:
+                filtered_cnt = sorted(blue_cnts, key=cv2.contourArea, reverse=True)
+                filtered_cnt = filtered_cnt[:round(90 / (cv2.contourArea(filtered_cnt[0]) + 1)) + 2]
+                cv2.drawContours(blue, filtered_cnt, -1, 255, -1)
+            
+                points = np.vstack(filtered_cnt).squeeze()
+                if len(points) > 2:
+                    [vx, vy, x0, y0] = cv2.fitLine(points, cv2.DIST_L2, 0, 0.01, 0.01)
+
+                    left_y = int((-x0 * vy / vx) + y0)
+                    right_y = int(((blue_mask.shape[1] - x0) * vy / vx) + y0)
+                    start = (0, left_y)
+                    end = (blue_mask.shape[1]-1, right_y) 
+
+                    blue_line[0], blue_line[1] = start
+                    blue_line[2], blue_line[3] = end    
+
+                    cv2.line(frame, start, end, (255, 0, 0), 2)
+
+            def line(x):
+                start_x, start_y, end_x, end_y = blue_line[0], blue_line[1], blue_line[2], blue_line[3]
+                slope = -(start_y - end_y) / 640
+                return slope * x + start_y
+            
+            for x in range(640):
+                y = min(max(round(line(x)), 0), 480)
+                print(x, y)
+                frame[:y, x] = 0
+                hsv[:y, x] = 0
                     
 
         stream.show("frame", frame)
