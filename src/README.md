@@ -113,6 +113,7 @@ Lists all Python packages required to run the project.
 - `numpy`: mathematical operations.
 - `RPi.GPIO`: control of GPIO pins for motors.
 - `rpi-hardware-pwm`: access hardware-level PWM on Raspberry Pi.
+- ect. some more not as important az the aboves.
 
 ---
 # Maintained and presented by Team D0037 - Úgrálo Vizí Bóczy

@@ -68,8 +68,13 @@ We created our own track using the reverse side of a previously used Robomission
 Although lighting and background colors varied in the test room, preprocessing steps (cropping, blurring, and HSV filtering) helped reduce the impact of environmental conditions.  
 A photo of the field setup is included in the `hardware/other/` directory.
 
-## Turning algorithm !!!!!!!
+## Turning algorithm
 
+**Problem:**
+One of the fundamental capabilities required for the vehicle is the ability to execute turns. In the context of this project, the primary challenge was not merely enabling the turning motion, but ensuring its precision. 
+
+**Solution:**
+Our objective was to make the vehicle follow the desired path with minimal deviation, particularly during turning maneuvers. Applied Method: To achieve this, we implemented continuous real-time monitoring of the vehicle’s orientation. The system tracks the vehicle’s position and heading in the (X, Y) coordinate space and applies corrective adjustments to the motion based on deviations from the desired trajectory. These corrections are computed using a classical PID (Proportional–Integral–Derivative) control algorithm. The PID controller continuously evaluates the error between the current and target positions, and adjusts the steering accordingly to reduce this error over time. This approach enables the vehicle to dynamically align its path with the intended curve, resulting in high-precision turning performance.
 
 
 # Maintained and presented by Team D0037 - Úgrálo Vizí Bóczy
