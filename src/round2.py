@@ -101,44 +101,34 @@ def rounds(n, m, d):
                 array = processing.get_blocks()
                 continue
             
-        """if array[0] != "r" and array[1] != "r" and array[2] != "r":
-                print("all green")
-                move.move(200)
-                move.turn(45, 90, forward = -1)
-                array = processing.get_blocks()
-                move.turn(45, 90, forward = -1)
-                continue
+            # Again in parking segment
+            if i == 3:
 
-        if array[0] != "g" and array[1] != "g" and array[2] != "g":
-            print("all red")
-            move.turn(60, 50)
-            move.tun(-60, 50)
-            move.move(100)
-            move.turn(90, 50)
-            array = processing.get_blocks()
-            move.move(-30)
-            continue
+                # Left turns
+                blocks = processing.blocks
+                if d == 1:
+                    if blocks[0] == "r":
+                        move.turn(12, 60)
+                        move.turn(-12, 60)
+                        move.move(15)
+                        move.turn(-90, 60)
+                        move.move(20)
 
-        if array[0] == "r" and array[2] == "g":
-            print("red and green")
-            move.turn(60, 50)
-            move.tun(-60, 50)
-            move.turn(90, 55)
-            move.turn(-90, 55)
-            move.move(100)
-            move.turn(45, 90, forward = -1)
-            array = processing.get_blocks()
-            move.turn(45, 90, forward = -1)
-            continue
+                    elif blocks[0] == "g":
+                        move.turn(-40, 60)
+                        move.turn(40, 60)
+                        move.move(20)
+                        move.turn(-45, 60)
+                        move.turn(-45, 60, forward=-1)
+                        move.move(20)
 
-        if array[0] == "g" and array[2] == "r":
-            print("green and red")
-            move.move(100)
-            move.turn(-90, 55)
-            move.turn(90, 55)
-            move.turn(90, 50)
-            array = processing.get_blocks()
-            move.move(-30)
-            continue"""
-
+                    else:
+                        move.move(80)
+                        move.turn(-90, 60)
+                        move.move(20)
+                    
+                # Right turns
+                elif d == -1:
+                    
+                    
 # Entering parking space
