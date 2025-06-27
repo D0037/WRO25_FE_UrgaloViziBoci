@@ -1,3 +1,6 @@
+#code only existing for testing reasons
+#changing dynamically
+
 import utils.movement as move
 import RPi.GPIO as GPIO
 import time

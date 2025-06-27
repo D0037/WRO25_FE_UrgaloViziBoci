@@ -1,3 +1,6 @@
+# streaming the camera feed to make debugging easyer
+# using flask and Marci's server and domain
+
 from flask import Flask, Response
 import cv2
 import threading

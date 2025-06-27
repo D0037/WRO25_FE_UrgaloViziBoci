@@ -1,5 +1,4 @@
 opencv-contrib-python
 numpy
 RPi.GPIO
-pyserial
 rpi-hardware-pwm

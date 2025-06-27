@@ -1,7 +1,7 @@
+# code for the second rounds movement
 import utils.movement as move
 import utils.image_processing as processing
 import time
-
 
 #processing.get_blocks() -> ["r", "g", "n"]
 #green left, red right
@@ -43,7 +43,8 @@ def rounds(n, m, d):
                     
             print(array)
             time.sleep(10)
-            #algorithm for all greens segment (ok)
+
+            #algorithm for all greens segment
             if array.count("r") == 0 and array.count("g") > 0:
                 print("all green")
                 move.turn(-60 * d, 50)
@@ -54,7 +55,7 @@ def rounds(n, m, d):
                 array = processing.get_blocks()
                 continue
             
-            #algorithm for all reds segment (ok)
+            #algorithm for all reds segment
             if array.count("g") == 0 and array.count("r") > 0:
                 print("all red")
                 move.turn(12 * d, 50)

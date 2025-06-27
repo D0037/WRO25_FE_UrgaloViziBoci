@@ -6,14 +6,15 @@
 #include <cmath>
 #include <thread>
 #include <chrono>
-#include <pybind11/pybind11.h>
+#include <queue>
+//#include <pybind11/pybind11.h>
 
 #define GYRO_CONFIG 0x1B
 #define ACCEL_CONFIG 0x1C
 #define GYRO_XOUT_H 0x43
 #define ACCEL_XOUT_H 0x3B
 
-namespace py = pybind11;
+//namespace py = pybind11;
 
 struct coord_3d {
     double x, y, z;
@@ -23,6 +24,7 @@ struct mouse_data {
     double x, y;
 };
 
+// code for communicating with gyro
 class Gyro {
     public:
         Gyro(char* dev, int addr, int fs_sel, int afs_sel)
@@ -42,6 +44,7 @@ class Gyro {
                 exit(1);
             }
 
+            // setting scale factors
             g_scale_factor = 131.0 / (fs_sel + 1);
             a_scale_factor = 16384 / pow(2, afs_sel);
 
@@ -62,11 +65,13 @@ class Gyro {
             t.detach();
         }
 
+        // close I2C communication
         ~Gyro() {
             kill();
             if (file >= 0) close(file);
         }
 
+        // geting specific values form gyro
         coord_3d get() {
             coord_3d gyro;
             gyro.x = x;
@@ -136,10 +141,11 @@ class Gyro {
             return accel;
         }
 
+        // gyro calibration sampling
         void calibrate(int samples = 5000) {
             double total_x = 0.0, total_y = 0.0, total_z = 0.0;
 
-            py::gil_scoped_release release;
+            //py::gil_scoped_release release;
             for (int i = 0; i < samples; i++) {
                 total_x += get_x_vel();
                 total_y += get_y_vel();
@@ -151,6 +157,7 @@ class Gyro {
             bias_z = total_z / samples;
         }
 
+        // correcting gyro data using the callibration
         void gyro_process() {
             std::cout << "started\n";
             auto prev_time = std::chrono::high_resolution_clock::now();
@@ -171,6 +178,7 @@ class Gyro {
             }
         }
 
+        // cleanup and declarations
         void kill() {
             kill_switch = true;
         }
@@ -180,6 +188,8 @@ class Gyro {
         }
     
         double bias_x, bias_y, bias_z;
+    
+    // manual I2C communication
     private:
         void writeByte(uint8_t reg, uint8_t data) {
             uint8_t buf[2] = {reg, data};
@@ -226,10 +236,12 @@ class Gyro {
         double speed;
 };
 
+// class for tracking the car's position in real time
 class PositionTracker {
 public:
     Gyro gyro;
 
+    //Starting I2C communication
     PositionTracker(char* gyro_i2c = "/dev/i2c-1", int gyro_addr = 0x68, int fs_sel = 0, int afs_sel = 0, double conversion_factor = 100)
     :
     conversion_factor(conversion_factor), gyro(Gyro(gyro_i2c, gyro_addr, fs_sel, afs_sel))
@@ -248,6 +260,7 @@ public:
         t.detach();
     }
 
+    // end tracking process
     ~PositionTracker() {
         kill();
     }
@@ -257,6 +270,7 @@ public:
         gyro.kill();
     }
 
+    // geting specific values from tracker
     mouse_data get() {
         mouse_data data;
         data.x = x;
@@ -291,6 +305,7 @@ public:
         return gyro.get_z();
     }
 
+// measuring speed 
 private:
     void process() {
         unsigned char data[3];
@@ -298,7 +313,7 @@ private:
         double dy_long = 0;
         while (!kill_switch) {
             ssize_t bytes = read(fd, data, sizeof(data));
-            std::chrono::duration<double, std::milli> dt;
+            
             if (bytes < 0) {
                 perror("Failed to read from /dev/mice");
                 break;
@@ -353,6 +368,7 @@ PYBIND11_MODULE(tracker, m) {
         .def_readwrite("gyro", &PositionTracker::gyro);
 };
 
+// starting the tracking and the communication with gyro
 /*int main() {
     PositionTracker tracker("/dev/i2c-1", 0x69 - 1, 1, 0, 496.5);
     //Gyro gyro("/dev/i2c-1", 0x68, 1, 0);

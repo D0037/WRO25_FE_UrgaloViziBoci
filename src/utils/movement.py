@@ -18,16 +18,19 @@ MOTOR_PWM_FREQ = 1000
 l_en = 23
 r_en = 24
 
+# declarations
 servo_pwm: None | HardwarePWM = None
 l_pwm: None | GPIO.PWM = None
 r_pwm: None | GPIO.PWM = None
 
 tracker = None
 
+#degree to radian
 radian_conversion = math.pi / 180
 
 global_angle: float = 0
 
+# using PID to make the movement flow easyer
 def get_pid(radius: float) -> tuple[float, float, float]:
     p = 30 - (11 / 50) * radius
     i = -0.003 * radius + 0.65
@@ -35,6 +38,7 @@ def get_pid(radius: float) -> tuple[float, float, float]:
 
     return p, i, d
 
+# integrating the gyro and the mouse sensor's data to calculate position
 class RelativeCoordinates:
     def __init__(self, origin_x, origin_y, angle):
         self.origin_x = origin_x
@@ -43,12 +47,14 @@ class RelativeCoordinates:
         self.y_const = 0
         self.x_const = 0
 
+    # using trigonometry we can calculate the relative x and y values dependante on the incidance
     def get_point(self, x, y):
         x_new = math.cos(self.angle) * (x - self.origin_x) - math.sin(self.angle) * (y - self.origin_y)
         y_new = math.sin(self.angle) * (x - self.origin_x) + math.cos(self.angle) * (y - self.origin_y)
 
         return x_new + self.x_const, y_new + self.y_const
 
+    # geting specific values from movement
     def get_point_x(self, x, y):
         return (math.cos(self.angle) * (x - self.origin_x) - math.sin(self.angle) * (y - self.origin_y)) + self.x_const
 
@@ -62,10 +68,11 @@ class RelativeCoordinates:
         self.y_const = y
         self.x_const = x
 
+# radian to degree
 def to_deg(radian):
     return radian * 180 / math.pi
 
-
+# communication with the gyro c++
 def init():
     global servo_pwm, l_pwm, r_pwm, tracker
 
@@ -96,6 +103,7 @@ def init():
     #Initialize ADC
     adc.init()
 
+#function to make the servo turn x degrees
 def set_angle(angle):
     """Set angle of servo relative to forward pointing wheels
         @angle: angle to set servo to (positive to right)
@@ -104,6 +112,7 @@ def set_angle(angle):
     duty = ((angle + 90) / 36) + 5
     servo_pwm.change_duty_cycle(max(min(duty, 20), 0))
 
+#function to make the motor go by x% of max speed
 def set_speed(speed: float):
     bat = 0 #adc.read_bat()
     multiplier = 1 #(1 + math.sqrt(8.4 - bat)) / math.sqrt(8.4 - bat)
@@ -117,6 +126,7 @@ def set_speed(speed: float):
         r_pwm.ChangeDutyCycle(0)
         l_pwm.ChangeDutyCycle(0)
 
+#making sure that no thread goes beyond working time
 def cleanup():
     servo_pwm.stop()
     l_pwm.stop()
@@ -124,6 +134,7 @@ def cleanup():
     tracker.kill()
     GPIO.cleanup((5,6,23,24))
 
+#general function to move in a straight line
 def move(distance: float, max_speed: float = 10, p: float = 10, a: float = 30):
     """Function to move in a straight line 
         @distance: distance to go
@@ -160,6 +171,7 @@ def move(distance: float, max_speed: float = 10, p: float = 10, a: float = 30):
     
     set_speed(0)
 
+#general function to turn x degrees on a y radius circle
 def turn(angle: float, radius: float, max_speed = 10, p=None, i=None, d=None, forward=1):
     """Move in a circle with a radius
         @angle: angle difference after stop from starting point (positive to right)
@@ -167,6 +179,7 @@ def turn(angle: float, radius: float, max_speed = 10, p=None, i=None, d=None, fo
         @max_speed: max speed to reach
         @p: correction constant
     """
+    #seting up variables
     global global_angle
 
     relative_start = RelativeCoordinates(tracker.get_x(), tracker.get_y(), tracker.gyro.get_z() * radian_conversion)
@@ -191,18 +204,22 @@ def turn(angle: float, radius: float, max_speed = 10, p=None, i=None, d=None, fo
     pid = PID(17, 0.3, 8) # 40
     print("turn", angle, radius, forward)
 
+    # sending data for analisation
     with open("turn.csv", "w") as f:
         f.write("angle,ratio,correction,rotation_calculated,x_rotation_calculated,y_rotation_calculated,distance_error,rotation_error,x_pos,y_pos,p,i,d,bat,time\n")
 
+    #seting up variables
     correction = 0
     prev_pos = relative_start.get_point(tracker.get_x(), tracker.get_y())
     d_prev = 0
     p, i, d = 0,0,0
 
+    #IDK ;)
     while abs(tracker.gyro.get_z() - angle_start) < abs(angle):
         x_pos, y_pos = relative_start.get_point(tracker.get_x(), tracker.get_y())
         angle_current = tracker.gyro.get_z() - angle_start
 
+        #calculating where we should be during the turning process
         if prev_pos != (x_pos, y_pos):
             prev_pos = x_pos, y_pos
             distance_from_center = math.sqrt((radius - abs(x_pos))**2 + abs(y_pos)**2)
@@ -234,6 +251,7 @@ def turn(angle: float, radius: float, max_speed = 10, p=None, i=None, d=None, fo
 
             set_speed(max_speed * forward)
 
+            # calculating error and using PID
             if (prev_pos != x_pos, y_pos):
                 prev_pos = x_pos, y_pos
                 rotation_error = (rotation_calculated - angle_current) * forward # brutálisan megszorozva xdd
@@ -243,6 +261,7 @@ def turn(angle: float, radius: float, max_speed = 10, p=None, i=None, d=None, fo
                 if d_new != 0:
                     d = d_new
                 
+                #sending data for analyis
                 log = f"{angle_current},{ratio},{correction},{rotation_calculated},{x_rotation_calculated},{y_rotation_calculated},{distance_error},{rotation_error},{x_pos},{y_pos},{p},{i},{d},{adc.read_bat()},{time.time() - start_time}"
                 with open("turn.csv", "+a") as f:
                     f.write(log + "\n")

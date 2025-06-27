@@ -1,3 +1,4 @@
+# code for starting the whole program with a puss of the START buton
 import RPi.GPIO as GPIO
 import time
 
