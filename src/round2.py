@@ -129,6 +129,24 @@ def rounds(n, m, d):
                     
                 # Right turns
                 elif d == -1:
+                    if blocks[0] == "r" or blocks[1] == "r":
+                        move.turn(40, 60)
+                        move.turn(-40, 60)
+                        move.move(40)
+                        move.turn(30, 60)
+                        move.turn(30, 60, -1)
+                        move.turn(30, 60)
+                        move.move(10)
                     
+                    elif blocks[1] == "g" or blocks[1] == "g":
+                        move.turn(-12, 60)
+                        move.turn(12, 60)
+                        move.move(60)
+                        move.turn(90, 60)
+                        move.move(20)
                     
-# Entering parking space
+                    else:
+                        move.move(60)
+                        move.turn(90, 60)
+                        move.move(10)
+                    
