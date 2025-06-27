@@ -47,12 +47,26 @@ def cnt_middle(cnt):
 
 # Define position boundaries based on x, y coordinates.
 # These are used to classify the starting position of the robot.
-positions = {
+"""positions = {
     "front_inner":  lambda x, y: y > tan(10) * x + 375 and y > tan(10) * -x + 360,
     "front_middle": lambda x, y: y > tan(10) * x + 375 and tan(10) * -x + 310 < y < tan(10) * -x + 360,
     "front_outer":  lambda x, y: y > tan(10) * x + 375 and y < tan(10) * -x + 310,
     "back_inner":   lambda x, y: y < tan(10) * x + 375 and y > tan(8) * -x + 285.69,
     "back_middle":  lambda x, y: y < tan(10) * x + 375 and tan(6) * -x + 270 < y < tan(8) * -x + 285.69,
+    "back_outer":   lambda x, y: y < tan(10) * x + 375 and y < tan(6) * -x + 270,
+}"""
+
+positions = {
+    "front_inner":  lambda x, y: y > tan(10) * x + 375 and y > tan(10) * -x + 330,
+
+    "front_middle": lambda x, y: y > tan(10) * x + 375 and tan(10) * -x + 250 < y < tan(10) * -x + 330,
+
+    "front_outer":  lambda x, y: y > tan(10) * x + 375 and y < tan(10) * -x + 250,
+
+    "back_inner":   lambda x, y: y < tan(10) * x + 375 and y > tan(8) * -x + 292.69,
+
+    "back_middle":  lambda x, y: y < tan(10) * x + 375 and tan(6) * -x + 270 < y < tan(8) * -x + 292.69,
+
     "back_outer":   lambda x, y: y < tan(10) * x + 375 and y < tan(6) * -x + 270,
 }
 
