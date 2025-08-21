@@ -1,3 +1,5 @@
+import time
+
 # PID algorithm for the turning 
 class PID:
     def __init__(self, p: float, i: float, d: float):
@@ -6,11 +8,17 @@ class PID:
         self.d = d
         self.sum = 0
         self.prev = 0
+        self.prev_time = time.time()
     
     def update(self, error):
+        p = error * self.p
+
         self.sum += error
-        d = (self.prev - error) * self.d
+        i = self.sum * self.i
+
+        d = (self.prev - error) / (self.prev_time - time.time()) * self.d
+        self.prev_time = time.time()
         self.prev = error
-        correction = (error * self.p) + (self.sum * self.i) + d
-        self.prev = error
-        return correction, error * self.p, self.sum * self.i, d
+
+        correction = p + i + d
+        return correction, p, i, d

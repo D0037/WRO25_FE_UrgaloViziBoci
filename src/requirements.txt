@@ -2,3 +2,8 @@ opencv-contrib-python
 numpy
 RPi.GPIO
 rpi-hardware-pwm
+adafruit-circuitpython-bno08x
+smbus2
+sparkfun-qwiic-vl53l1x
+picamera2
+ADS1x15-ADC
