@@ -7,7 +7,6 @@ import os
 import signal
 import round2
 import RPi.GPIO as GPIO
-import VL53L1X
 import config
 import utils.sensors as sensors
 
