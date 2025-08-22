@@ -34,12 +34,16 @@ measured_block_pos = {
 direction = True        # Direction flag: True if orange is further, False if blue is further
 black_count = 0        # Count of black pixels in the middle row
 height, width = 0, 0    # Frame dimensions
+blue_visible = False
+orange_visible = False
+x_intersect = 0
+y_intersect = 0
 
 # Define color ranges in HSV
 lower_green = np.array([40, 0, 20])
 upper_green = np.array([90, 255, 255])
 
-lower_blue = np.array([100, 70, 80])
+lower_blue = np.array([100, 70, 70])
 upper_blue = np.array([140, 255, 255])
 
 lower_orange = np.array([0, 20, 50])
@@ -73,17 +77,17 @@ def cnt_middle(cnt):
 def area_filter(mask, size_coefficient, min_num):
     cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-    if len(cnts) < min_num:
+    if len(cnts) < 1:
         return None, None
     
     # Filter contours based on size keep the biggest n
     # where n is dependent of the largest countour
     # This is useful to remove noise, but if barely anything can be seen, that won't be filtered
     cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
-    cnts = cnts[:round(size_coefficient / (cv2.contourArea(cnts[0]) + 1)) + min_num]
+    cnts = cnts[:round(size_coefficient / max(cv2.contourArea(cnts[0]), 1)) + min_num]
     
     # set every pixel to black
-    mask[:] = 0
+    mask[:, :] = 0
 
     # Draw the filtered contours on the mask
     cv2.drawContours(mask, cnts, -1, 255, -1)
@@ -129,23 +133,24 @@ def image_thread():
         # Convert frame to grayscale for black line detection
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         lower_black = np.array([0])
-        upper_black = np.array([80])
+        upper_black = np.array([90])
 
         # Mask area abovo black walls
         black_mask = cv2.inRange(gray, lower_black, upper_black)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 10)) # Vertical kernel
-        black_mask = cv2.dilate(black_mask, kernel, iterations=2) # Dilate to fill gaps and remove noise
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 15)) # Vertical kernel
+        black_mask = cv2.dilate(black_mask, kernel, iterations=3) # Dilate to fill gaps and remove noise
         bottom_black_row = black_mask.shape[0] - np.argmax(np.flipud(black_mask), axis=0) - 1 # Find the bottom row of black pixels in each column
 
         # Set pixels above the bottom black row to black
         for x in range(black_mask.shape[1]):
             frame[:bottom_black_row[x], x] = 0
             hsv[:bottom_black_row[x], x] = 0
+            black_mask[:bottom_black_row[x], x] = 255
         
         # Count black pixels in the middle row
         # This is used to correctly determine between some tricky spots, that the lidar is not enough for
         global black_count
-        black_count = black_mask[int(black_mask.shape[0] / 2), :].count(0)
+        black_count = np.count_nonzero(black_mask[int(black_mask.shape[0] / 2), :])
 
         stream.show("black", black_mask)  # Display black mask over network (for debugging)
 
@@ -161,11 +166,12 @@ def image_thread():
         # === START POSITION DETECTION MODE ===
         if mode == "heading":
             # Find contours for blue (assumed to be the starting line)
-            blue, blue_cnts = area_filter(blue_mask, 90, 4)
+            blue, blue_cnts = area_filter(blue_mask, 70, 1)
 
             # for debugging only
             stream.show("orange_mask", orange_mask)
             stream.show("blue_mask", blue_mask)
+            stream.show("blue", blue)
 
             orange_slope = None
             blue_slope = None
@@ -194,6 +200,8 @@ def image_thread():
 
                     # Draw detected line on frame
                     cv2.line(frame, start, end, (255, 0, 0), 2)
+                    global blue_visible
+                    blue_visible = True
 
             # Find contours for orange (possible blocks)
             orange_mask, orange_cnts = area_filter(orange_mask, 90, 4)
@@ -217,19 +225,25 @@ def image_thread():
 
                     # Draw detected line on frame for debugging
                     cv2.line(frame, start, end, (0, 0, 255), 2)
+                    global orange_visible
+                    orange_visible = True
             
             # Find heading by the difference of slopes (also calculate intersection point  ((who knows, maybe we will need it lol)))
             if orange_slope != None and blue_slope != None:
-                global direction
-                direction = orange_slope > blue_slope # True if orange is further
+                global direction, x_intersect, y_intersect
+                direction = orange_slope < 0 # True if orange is further
+                #print(orange_slope, blue_slope)
                 
                 # Intersection point calculation
                 x = round((orange_line[1] - blue_line[1]) / (blue_slope[0] - orange_slope[0]))
                 y = round(blue_slope[0] * x + blue_line[1])
 
+                x_intersect = x
+                y_intersect = y
+
                 # Draw intersection point on the frame (for debugging)
-                cv2.circle(frame, (x, y), 3, (0, 255, 0), -1)
-                print(f"intersect: {x}, {y}")
+                cv2.circle(frame, (x, y), 6, (0, 255, 0), -1)
+                #print(f"intersect: {x}, {y}")
 
             # Show detected colors on the stream
             stream.show("blue", blue)

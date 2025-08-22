@@ -68,7 +68,8 @@ def init():
     # Config back sensor
     tof_back.set_i2c_address(0x2b)
     tof_back.set_inter_measurement_in_ms(200)
-    tof_back.set_roi(4, 4, 57)
+    tof_back.set_timing_budget_in_ms(200)
+    tof_back.set_roi(16, 4, 197)
     tof_back.set_distance_mode(2)
     tof_back.start_ranging()
 
@@ -76,25 +77,28 @@ def init():
     GPIO.output(config.SHUT_LASER_2, GPIO.HIGH) # Enable sensor
     time.sleep(0.2)
     if not tof_front.init_sensor(0x29): # Check for success
-        raise IOError("Connection with the back tof sensor could not be initialized!")
+        raise IOError("Connection with the front tof sensor could not be initialized!")
     
     # Config front sensor
-    tof_front.set_i2c_address(0x2c)
+    tof_front.set_i2c_address(0x2a)
     tof_front.set_inter_measurement_in_ms(200)
-    tof_front.set_roi(4, 4, 57)
-    tof_front.set_distance_mode(1)
+    tof_front.set_timing_budget_in_ms(200)
+    tof_front.set_roi(8, 4, 195)
+    tof_front.set_distance_mode(2)
     tof_front.start_ranging()
 
     time.sleep(0.2)
     GPIO.output(config.SHUT_LASER_3, GPIO.HIGH) # Enable sensor
     time.sleep(0.2)
     if not tof_side.init_sensor(0x29): # Check for success
-        raise IOError("Connection with the back tof sensor could not be initialized!")
+        print("fuckk the back sensor!!!")
+        raise IOError("Connection with the side tof sensor could not be initialized!")
     
     # Config side sensor
     tof_side.set_inter_measurement_in_ms(200)
-    tof_side.set_roi(8, 8, 59)
-    tof_side.set_distance_mode(2)
+    tof_side.set_timing_budget_in_ms(200)
+    tof_side.set_roi(16, 4, 195)
+    tof_side.set_distance_mode(1)
     tof_side.start_ranging()
 
 # Mostly used for debugging purposes

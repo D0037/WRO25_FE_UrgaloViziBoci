@@ -275,7 +275,7 @@ static int spihal_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len,
   }
 
   */
-  uint8_t buff[0x1000];
+  uint8_t buff[0x500];
   memset(buff, 0x00, sizeof(buff));
 
   if (!spi_dev->read(buff, sizeof(buff), 0x00) < 0) {

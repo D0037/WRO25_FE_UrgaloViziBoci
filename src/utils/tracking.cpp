@@ -47,8 +47,12 @@ class PositionTracker {
     // Process the gyro data in a separate thread
     // This will run in parallel with the main tracking process
     double gyroProcesss() {
+        auto prev_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> dt;
+
         while (!kill_switch) {
-            // Wait for the next sensor event (this is blocking, and this is what actally reads the data)
+            
+            // Wait for the next sensor event (this is blocking, and this is what actually reads the data)
             if (!gyro.getSensorEvent(&sensorValue)) {
                 // The gyro's data rate should go up to 400Hz, but I could only get it to 200Hz :/
                 std::this_thread::sleep_for(std::chrono::microseconds(5000));
@@ -67,6 +71,12 @@ class PositionTracker {
                 // Update variables with the calculated angles
                 angle_rad = angles.yaw;
                 angle = angle_rad * 180 / M_PI;
+
+                /*dt = std::chrono::high_resolution_clock::now() - prev_time;
+                std::cout << "time: " << dt.count() << "\n";
+                
+                std::cout << "angle: " << angle << "\n";
+                prev_time = std::chrono::high_resolution_clock::now();*/
             }
      
         }
@@ -87,8 +97,8 @@ class PositionTracker {
                 //std::cout << "Movement: " << dx << " " << dy << "\n";
                 //std::cout << "Gyro angle: " << angle << "\n";
 
-                x += cos(angle_rad) - dy * sin(angle_rad);
-                y += sin(angle_rad) + dy * cos(angle_rad);
+                x += dx * cos(angle_rad) - dy * sin(angle_rad);
+                y += dx * sin(angle_rad) + dy * cos(angle_rad);
 
                 //std::cout << "Position: x: " << x << " y: " << y << "\n";
             }
@@ -123,7 +133,7 @@ public:
             exit(-1);
         }
 
-        gyro.enableReport(SH2_GAME_ROTATION_VECTOR, 5000U); // Enable rotation vector report every 5ms ONLY 200Hz...
+        gyro.enableReport(SH2_GAME_ROTATION_VECTOR, 10000U); // Enable rotation vector report every 10ms ONLY 100Hz...
         std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // Sleep because like this it fails less often
         std::thread gyro_t(&PositionTracker::gyroProcesss, this); // Separate thread for gyro data handling
         gyro_t.detach();
